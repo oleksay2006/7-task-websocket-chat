@@ -1,7 +1,33 @@
 const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
-const UserModel = require('./models/userModel');
-const RefreshModel = require('./models/refreshModel');
+const UserModel = require('./models/user.model');
+const RefreshModel = require('./models/refresh.model');
+
+async function beOnline(id) {
+  const user = await UserModel.user.findById({ _id: id });
+  user.online = true;
+  await user.save();
+  return user;
+}
+
+async function beOffline(id) {
+  const user = await UserModel.user.findById({ _id: id });
+  user.online = false;
+  await user.save();
+  return user;
+}
+
+async function updateUser(id, updates, body) {
+  const user = await UserModel.user.findById({ _id: id }).exec();
+  const refresh = await RefreshModel.refresh.findById({ _id: id }).exec();
+  refresh.firstname = body.firstname;
+  updates.forEach((update) => {
+    user[update] = body[update];
+  });
+  await refresh.save();
+  await user.save();
+  return user;
+}
 
 async function newUser(userInfo) {
   const {
@@ -12,9 +38,11 @@ async function newUser(userInfo) {
   if (user) {
     throw new Error('User already exists');
   }
-
+  const viewedBooks = [];
+  const socketId = '';
+  const online = false;
   const newUser = new UserModel.user({
-    firstname, lastname, email, password,
+    firstname, lastname, email, password, viewedBooks, socketId, online
   });
 
   await newUser.save();
@@ -29,7 +57,6 @@ async function newUser(userInfo) {
     ...payload,
   });
   await refresh.save();
-  console.log(newUser);
   const data = {
     data: newUser,
     tokens: refresh,
@@ -105,9 +132,11 @@ async function logoutUser(id) {
   if (!user) {
     throw new Error('User not found');
   }
+  await beOffline(id);
   tokens.accessToken = '';
   tokens.refreshToken = '';
   await tokens.save();
+  await user.save();
   return 'Logout successful';
 }
 
@@ -120,4 +149,6 @@ module.exports = {
   loginUser,
   refreshTokenUser,
   logoutUser,
+  beOnline,
+  beOffline
 };

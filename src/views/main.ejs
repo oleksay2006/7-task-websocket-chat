@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <%- include('./partials/head.ejs'); %>
+    <%- include('../static/styles/main-page-styles.ejs'); %>
+</head>
+
+<body>
+  <div class="div-container clearfix" id="app">
+    <div class="people-list" id="people-list">
+      <div class="profile">
+        <div class="people-list-header">
+          <img src="assets/online-user.png" alt="avatar" />
+          <p class="fs-5">
+            <%= user.firstname %>
+              <%= user.lastname %>
+          </p>
+        </div>
+        <div class="dropdown">
+          <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="visually-hidden">Toggle Dropdown</span>
+          </button>
+          <ul class="dropdown-menu">
+            <!-- <li><a class="dropdown-item" href="/profile">Profile</a></li> -->
+            <li><a class="dropdown-item" @click="logoutUser">Logout</a></li>
+          </ul>
+        </div>
+      </div>
+      <ul class="list">
+        <p class="fs-5">Chat members</p>
+        <% for (let i=0; i < users.length; i++) {%>
+          <li class="clearfix">
+            <% if (user.firstname===users[i].firstname) {%>
+              <img id="<%= users[i].id %>" src="assets/online-user.png" alt="avatar" />
+              <% } else if (users[i].online) {%>
+                <img id="<%= users[i].id %>" src="assets/online-user.png" alt="avatar" />
+                <% } else { %>
+                  <img id="<%= users[i].id %>" src="assets/offline-user.png" alt="avatar" />
+                  <% } %>
+                    <div class="about <%= users[i].firstname %><%= users[i].lastname %>">
+                      <div class="name">
+                        <%= users[i].firstname %>
+                          <%= users[i].lastname %>
+                      </div>
+                    </div>
+          </li>
+          <% } %>
+      </ul>
+    </div>
+    <div class="chat">
+      <div class="chat-header clearfix">
+        <div class="chat-about">
+          <div class="chat-with">Chat</div>
+        </div>
+      </div>
+      <div class="chat-history">
+        <ul class="chat-history-ul"></ul>
+      </div>
+      <form class="chat-message clearfix" id="chatForm">
+        <textarea name="msg" id="msg" placeholder="Type your message" rows="3"></textarea>
+        <button id="chatButton">Send</button>
+      </form>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
+    crossorigin="anonymous"></script>
+  <script>
+    const socket = io();
+    const id = window.location.pathname.slice(15, 39);
+    document.addEventListener("DOMContentLoaded", function () {
+      const chatMessages = document.querySelector('.chat-history-ul');
+      const chatForm = document.getElementById('chatForm');
+      const chatInput = document.getElementById('msg');
+      chatInput.oninput = function () {
+        socket.emit('userTyping');
+      };
+      chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const msg = e.target.elements.msg.value;
+        socket.emit('chatMessage', msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        e.target.elements.msg.value = '';
+        e.target.elements.msg.focus();
+      });
+      // function keyDownHandler() {
+      //   console.log('3sec remains');
+      //   const isTyping = document.querySelector('.typing');
+      //   console.log(isTyping);
+      //   if (isTyping) {
+      //     isTyping.style.display = 'none';
+      //   }
+      // }
+      // fnDelay = (function () {
+      //   var timer = 0;
+      //   return function (callback, ms) {
+      //     clearTimeout(timer);
+      //     timer = setTimeout(callback, ms);
+      //   };
+      // })();
+      chatInput.onkeydown = function () {
+        // fnDelay(function () {
+        //   keyDownHandler();
+        // }, 3000);
+        socket.emit('stopTyping');
+      };
+    });
+    async function getUser(id) {
+      const data = {
+        online: true,
+      };
+      const res = await fetch(`/v1/users/profile/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const res2 = await fetch(`/v1/users/updateStatus/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      const info2 = await res2.json();
+      console.log(info2);
+      const info = await res.json();
+      return info.data;
+    }
+    getUser(id).then(user => {
+      socket.emit('joinChat', { user })
+    });
+
+    socket.on('userOnline', user => {
+      userOnline(user);
+    });
+
+    socket.on('userOffline', user => {
+      userOffline(user);
+    });
+
+    socket.on('message', message => {
+      getUser(id).then(user => {
+        if (message.username === user.firstname) {
+          outputMineMessage(message);
+        } else {
+          outputMessage(message);
+        }
+      });
+    });
+
+    socket.on('stopTyping', () => {
+      stopTyping();
+    });
+    socket.on('typing', username => {
+      userTyping(username);
+    });
+
+    function userOnline(user) {
+      const img = document.getElementById(`${user._id}`);
+      const elem = document.querySelector(`.${user.firstname}${user.lastname} span`);
+      if (elem) {
+        elem.remove();
+      }
+      img.src = 'assets/online-user.png';
+    }
+
+    function userOffline(user) {
+      const img = document.getElementById(`${user._id}`);
+      img.src = 'assets/offline-user.png';
+      const elem = document.querySelector('.offline-time');
+      const about = document.querySelector(`.${user.firstname}${user.lastname}`);
+      if (!elem) {
+        const span = document.createElement('span');
+        span.innerHTML = `
+          <span class="message-data-name fs-7 offline-time" style="color: #6C757D;">${user.firstname} was online 1m ago</span>
+        `;
+        about.appendChild(span);
+        let min = 1
+        setInterval(() => {
+          min += 1;
+          span.innerHTML = `
+            <span class="message-data-name fs-7 offline-time" style="color: #6C757D;">${user.firstname} was online ${min}m ago</span>
+          `;
+        }, 60000);
+      }
+    }
+
+    function stopTyping() {
+      function keyDownHandler() {
+        const isTyping = document.querySelector('.typing');
+        if (isTyping) {
+          isTyping.remove();
+        }
+      }
+      fnDelay = (function () {
+        var timer = 0;
+        return function (callback, ms) {
+          clearTimeout(timer);
+          timer = setTimeout(callback, ms);
+        };
+      })();
+      fnDelay(function () {
+        keyDownHandler();
+      }, 3000);
+    }
+
+    function userTyping(username) {
+      const elem = document.querySelector('.typing');
+      if (!elem) {
+        const li = document.createElement('li');
+        li.classList.add('clearfix');
+        li.innerHTML = `
+          <div class="message-data align-right typing">
+            <span class="message-data-name fs-6" style="color: #6C757D;">${username} is typing...</span>
+          </div>
+        `;
+        document.querySelector('.chat-history-ul').appendChild(li);
+      }
+      // else {
+      //   elem.innerHTML = `
+      //     <div class="message-data align-right typing">
+      //       <span class="message-data-name fs-6" style="color: #6C757D;">${username} is typing...</span>
+      //     </div>
+      //   `;
+      //   elem.style.display = 'block';
+      // }
+    }
+
+    function outputMessage(message) {
+      const li = document.createElement('li');
+      li.classList.add('clearfix');
+      li.innerHTML = `
+        <div class="message-data align-right">
+          <span class="message-data-time">${message.time}</span> &nbsp; &nbsp;
+          <span class="message-data-name">${message.username}</span>
+        </div>
+        <div class="message other-message float-right">
+          ${message.text}
+        </div>
+      `;
+      document.querySelector('.chat-history-ul').appendChild(li);
+    }
+
+    function outputMineMessage(message) {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div class="message-data">
+          <span class="message-data-name">${message.username}</span>
+          <span class="message-data-time">${message.time}</span>
+        </div>
+        <div class="message my-message">
+          ${message.text}
+        </div>
+      `;
+      document.querySelector('.chat-history-ul').appendChild(li);
+    }
+  </script>
+  <script src="https://unpkg.com/vue@next"></script>
+  <script src="/scripts/mainPage.js"></script>
+</body>
+
+</html>

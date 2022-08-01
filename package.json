@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon src/server/index.js",
-    "lint:fix": "eslint ./src/components/User/models/refreshModel.js --fix"
+    "lint:fix": "eslint ./src/static/utils/formatMessage.js --fix"
   },
   "repository": {
     "type": "git",
@@ -14,22 +14,27 @@
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ChechaValerii/intership-template/issues"
+    "url": "https://github.com/oleksay2006/intership-template/issues"
   },
-  "homepage": "https://github.com/ChechaValerii/intership-template#readme",
+  "homepage": "https://github.com/oleksay2006/intership-template#readme",
   "dependencies": {
-    "@hapi/joi": "17.1.1",
+    "@vuelidate/core": "2.0.0-alpha.43",
+    "@vuelidate/validators": "2.0.0-alpha.31",
     "bcryptjs": "2.4.3",
     "body-parser": "1.20.0",
     "compression": "1.7.4",
     "cookie-parser": "1.4.6",
     "cors": "2.8.5",
+    "csvtojson": "2.0.10",
     "dotenv": "16.0.1",
+    "ejs": "3.1.8",
     "express": "4.17.1",
     "helmet": "4.6.0",
     "joi": "17.6.0",
     "jsonwebtoken": "8.5.1",
-    "mongoose": "6.0.14"
+    "moment": "2.29.4",
+    "mongoose": "6.0.14",
+    "socket.io": "4.5.1"
   },
   "devDependencies": {
     "eslint": "8.3.0",

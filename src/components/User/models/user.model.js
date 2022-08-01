@@ -25,6 +25,15 @@ const UserSchema = new Schema({
   refreshToken: {
     type: String,
   },
+  viewedBooks: {
+    type: Array,
+  },
+  socketId: {
+    type: String,
+  },
+  online: {
+    type: Boolean,
+  },
 }, { timestamps: true });
 
 UserSchema.pre('save', async function (next) {
@@ -35,7 +44,13 @@ UserSchema.pre('save', async function (next) {
   next();
 });
 
+UserSchema.methods.addViewedBooks = function (viewedBooksObject) {
+  const obj = this;
+  obj.viewedBooks.push(viewedBooksObject);
+};
+
 const user = connections.model('user', UserSchema);
+
 module.exports = {
   user,
 };
